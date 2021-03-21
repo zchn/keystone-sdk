@@ -405,7 +405,11 @@ Enclave::destroy() {
     runtimeFile = NULL;
   }
 
-  return pDevice->destroy();
+
+  Error ret = pDevice->destroy();
+  deleteSnapshots(); 
+
+  return ret;
 }
 
 Error
@@ -433,7 +437,9 @@ Enclave::run(uintptr_t* retval) {
       case Error::EnclaveSnapshot:
         {
           int eid = pDevice->getEID();
-          printf("Call clone NOW! %d\n", eid);
+          addSnapshot(eid);
+          
+          printf("[clone] %d\n", eid);
 
 
           // Create new
@@ -487,6 +493,30 @@ Error
 Enclave::registerOcallDispatch(OcallFunc func) {
   oFuncDispatch = func;
   return Error::Success;
+}
+
+ 
+void 
+Enclave::addSnapshot(int snapshot_eid){
+    snapshot_lst.push_front(snapshot_eid);
+}
+
+void
+Enclave::deleteSnapshots(){
+  for (const auto& eid : snapshot_lst) {
+      pDevice->destroySnapshot(eid);    
+  }
+}
+
+Error 
+Enclave::deleteSnapshot(int snapshot_eid){
+  for (const auto& eid : snapshot_lst) {
+    if(snapshot_eid == eid){
+      pDevice->destroySnapshot(eid);
+      return Error::Success;
+    }
+  }
+  return Error::SnapshotInvalid;
 }
 
 }  // namespace Keystone
