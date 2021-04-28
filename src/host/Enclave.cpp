@@ -407,7 +407,7 @@ Enclave::destroy() {
 
 
   Error ret = pDevice->destroy();
-  deleteSnapshots(); 
+  deleteSnapshots();
 
   return ret;
 }
@@ -438,9 +438,6 @@ Enclave::run(uintptr_t* retval) {
         {
           int eid = pDevice->getEID();
           addSnapshot(eid);
-          
-          printf("[clone] %d\n", eid);
-
 
           // Create new
           pDevice->create(minPages, 1);
@@ -495,8 +492,8 @@ Enclave::registerOcallDispatch(OcallFunc func) {
   return Error::Success;
 }
 
- 
-void 
+
+void
 Enclave::addSnapshot(int snapshot_eid){
     snapshot_lst.push_front(snapshot_eid);
 }
@@ -505,12 +502,12 @@ void
 Enclave::deleteSnapshots(){
 
   while(!snapshot_lst.empty()){
-    pDevice->destroySnapshot(snapshot_lst.front()); 
+    pDevice->destroySnapshot(snapshot_lst.front());
     snapshot_lst.pop_front();
   }
 }
 
-Error 
+Error
 Enclave::deleteSnapshot(int snapshot_eid){
   for (const auto& eid : snapshot_lst) {
     if(snapshot_eid == eid){
