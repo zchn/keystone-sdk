@@ -3,6 +3,7 @@
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
 #include "edge_call.h"
+#include "stdio.h"
 
 #ifdef IO_SYSCALL_WRAPPING
 #include "edge_syscall.h"
@@ -22,7 +23,6 @@ incoming_call_dispatch(void* buffer) {
     return;
   }
 #endif /*  IO_SYSCALL_WRAPPING */
-
   /* Otherwise try to lookup the call in the table */
   if (edge_call->call_id > MAX_EDGE_CALL ||
       edge_call_table[edge_call->call_id] == NULL) {

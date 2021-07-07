@@ -22,6 +22,7 @@ extern "C" {
 #include "KeystoneDevice.hpp"
 #include "Memory.hpp"
 #include "Params.hpp"
+#include <list>
 
 namespace Keystone {
 
@@ -38,13 +39,15 @@ class Enclave {
   char hash[MDSIZE];
   hash_ctx_t hash_ctx;
   uintptr_t runtime_stk_sz;
+  uint64_t minPages;
+  std::list<int> snapshot_lst;  
+
   void* shared_buffer;
   size_t shared_buffer_size;
   OcallFunc oFuncDispatch;
   bool mapUntrusted(size_t size);
   bool allocPage(uintptr_t va, uintptr_t src, unsigned int mode);
   bool initStack(uintptr_t start, size_t size, bool is_rt);
-  Error loadUntrusted();
   bool mapElf(ElfFile* file);
   Error loadElf(ElfFile* file);
   Error validate_and_hash_enclave(struct runtime_params_t args);
@@ -53,6 +56,8 @@ class Enclave {
   bool initDevice();
   bool prepareEnclave(uintptr_t alternatePhysAddr);
   bool initMemory();
+  void deleteSnapshots();
+
 
  public:
   Enclave();
@@ -67,6 +72,8 @@ class Enclave {
       uintptr_t alternatePhysAddr);
   Error destroy();
   Error run(uintptr_t* ret = nullptr);
+  void addSnapshot(int snapshot_eid); 
+  Error deleteSnapshot(int snapshot_eid);
 };
 
 uint64_t

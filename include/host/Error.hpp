@@ -25,6 +25,9 @@ enum class Error {
   PageAllocationFailure,
   EdgeCallHost,
   EnclaveInterrupted,
+  EnclaveSnapshot,
+  EnclaveCloneRequested,
+  SnapshotInvalid,
 };
 
 }  // namespace Keystone

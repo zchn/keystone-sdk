@@ -45,20 +45,6 @@ calculate_required_pages(uint64_t eapp_sz, uint64_t rt_sz) {
   return req_pages;
 }
 
-Error
-Enclave::loadUntrusted() {
-  uintptr_t va_start = ROUND_DOWN(params.getUntrustedMem(), PAGE_BITS);
-  uintptr_t va_end   = ROUND_UP(params.getUntrustedEnd(), PAGE_BITS);
-
-  while (va_start < va_end) {
-    if (!pMemory->allocPage(va_start, 0, UTM_FULL)) {
-      return Error::PageAllocationFailure;
-    }
-    va_start += PAGE_SIZE;
-  }
-  return Error::Success;
-}
-
 /* This function will be deprecated when we implement freemem */
 bool
 Enclave::initStack(uintptr_t start, size_t size, bool is_rt) {
@@ -229,7 +215,6 @@ bool
 Enclave::prepareEnclave(uintptr_t alternatePhysAddr) {
   // FIXME: this will be deprecated with complete freemem support.
   // We just add freemem size for now.
-  uint64_t minPages;
   minPages = ROUND_UP(params.getFreeMemSize(), PAGE_BITS) / PAGE_SIZE;
   minPages += calculate_required_pages(
       enclaveFile->getTotalMemorySize(), runtimeFile->getTotalMemorySize());
@@ -240,7 +225,7 @@ Enclave::prepareEnclave(uintptr_t alternatePhysAddr) {
   }
 
   /* Call Enclave Driver */
-  if (pDevice->create(minPages) != Error::Success) {
+  if (pDevice->create(minPages, 0) != Error::Success) {
     return false;
   }
 
@@ -338,17 +323,12 @@ Enclave::init(
     return Error::DeviceError;
   }
 
-  if (loadUntrusted() != Error::Success) {
-    ERROR("failed to load untrusted");
-  }
-
   struct runtime_params_t runtimeParams;
   runtimeParams.runtime_entry =
       reinterpret_cast<uintptr_t>(runtimeFile->getEntryPoint());
   runtimeParams.user_entry =
       reinterpret_cast<uintptr_t>(enclaveFile->getEntryPoint());
-  runtimeParams.untrusted_ptr =
-      reinterpret_cast<uintptr_t>(params.getUntrustedMem());
+  runtimeParams.untrusted_ptr = reinterpret_cast<uintptr_t>(utm_free);
   runtimeParams.untrusted_size =
       reinterpret_cast<uintptr_t>(params.getUntrustedSize());
 
@@ -411,7 +391,11 @@ Enclave::destroy() {
     runtimeFile = NULL;
   }
 
-  return pDevice->destroy();
+
+  Error ret = pDevice->destroy();
+  deleteSnapshots();
+
+  return ret;
 }
 
 Error
@@ -421,19 +405,59 @@ Enclave::run(uintptr_t* retval) {
   }
 
   Error ret = pDevice->run(retval);
-  while (ret == Error::EdgeCallHost || ret == Error::EnclaveInterrupted) {
-    /* enclave is stopped in the middle. */
-    if (ret == Error::EdgeCallHost && oFuncDispatch != NULL) {
-      oFuncDispatch(getSharedBuffer());
-    }
-    ret = pDevice->resume(retval);
-  }
 
-  if (ret != Error::Success) {
-    ERROR("failed to run enclave - ioctl() failed");
-    destroy();
-    return Error::DeviceError;
-  }
+  while (true)
+  {
+    switch (ret) {
+      case Error::Success:
+        return Error::Success;
+      case Error::EnclaveInterrupted:
+        break;
+      case Error::EdgeCallHost:
+        {
+          if (oFuncDispatch) {
+            oFuncDispatch(getSharedBuffer());
+          }
+          break;
+        }
+      case Error::EnclaveSnapshot:
+        {
+          int eid = pDevice->getEID();
+          addSnapshot(eid);
+
+          // Create new
+          pDevice->create(minPages, 1);
+          uintptr_t utm_free = pMemory->allocUtm(params.getUntrustedSize());
+          pMemory->init(pDevice, pDevice->getPhysAddr(), minPages);
+
+          // printf("Enclave root PT: %p\n", pMemory->getRootPageTable());
+
+          if (!mapUntrusted(params.getUntrustedSize())) {
+            ERROR(
+                "failed to finalize enclave - cannot obtain the untrusted buffer "
+                "pointer \n");
+          }
+
+          struct keystone_ioctl_create_enclave_snapshot encl;
+          encl.snapshot_eid = eid;
+          encl.epm_paddr    = pDevice->getPhysAddr();
+          encl.epm_size     = PAGE_SIZE * minPages;
+          encl.utm_paddr    = utm_free;
+          encl.utm_size     = params.getUntrustedSize();
+
+          pDevice->clone_enclave(encl);
+
+          break;
+        }
+      default:
+        {
+          ERROR("failed to run enclave - error code: %ld", ret);
+          destroy();
+          return Error::DeviceError;
+        }
+    } /* switch */
+    ret = pDevice->resume(retval);
+  } /* while */
 
   return Error::Success;
 }
@@ -452,6 +476,32 @@ Error
 Enclave::registerOcallDispatch(OcallFunc func) {
   oFuncDispatch = func;
   return Error::Success;
+}
+
+
+void
+Enclave::addSnapshot(int snapshot_eid){
+    snapshot_lst.push_front(snapshot_eid);
+}
+
+void
+Enclave::deleteSnapshots(){
+
+  while(!snapshot_lst.empty()){
+    pDevice->destroySnapshot(snapshot_lst.front());
+    snapshot_lst.pop_front();
+  }
+}
+
+Error
+Enclave::deleteSnapshot(int snapshot_eid){
+  for (const auto& eid : snapshot_lst) {
+    if(snapshot_eid == eid){
+      pDevice->destroySnapshot(eid);
+      return Error::Success;
+    }
+  }
+  return Error::SnapshotInvalid;
 }
 
 }  // namespace Keystone
