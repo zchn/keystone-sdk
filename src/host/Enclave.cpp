@@ -461,7 +461,7 @@ Enclave::run(uintptr_t* retval) {
 Error
 Enclave::resume(uintptr_t* retval) {
   Error ret = pDevice->resume(retval);
-  
+
   while (true)
   {
     switch (ret) {

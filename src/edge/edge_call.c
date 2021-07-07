@@ -3,6 +3,7 @@
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
 #include <edge_call.h>
+#include <stdio.h>
 #include "string.h"
 #include <sys/epoll.h>
 #include <sys/socket.h>

@@ -48,19 +48,19 @@ incoming_syscall(struct edge_call* edge_call) {
     case (SYS_fstatat):;
       sargs_SYS_fstatat* fstatat_args = (sargs_SYS_fstatat*)syscall_info->data;
       // Note the use of the implicit buffer in the stat args object (stats)
-			// printf("Dirfd: %d\n", fstatat_args->dirfd);
-			// printf("Pathname: %s\n", fstatat_args->pathname);
-			ret = fstatat(
+      // printf("Dirfd: %d\n", fstatat_args->dirfd);
+      // printf("Pathname: %s\n", fstatat_args->pathname);
+      ret = fstatat(
           fstatat_args->dirfd, fstatat_args->pathname, &fstatat_args->stats,
           fstatat_args->flags);
       // perror("Finished running fstatat");
-			// printf("Return value: %ld\n", ret);
-			break;
+      // printf("Return value: %ld\n", ret);
+      break;
     case (SYS_fstat):;
       sargs_SYS_fstat* fstat_args = (sargs_SYS_fstat*)syscall_info->data;
       // Note the use of the implicit buffer in the stat args object (stats)
-			ret = fstat(fstat_args->fd, &fstat_args->stats);
-			break;
+      ret = fstat(fstat_args->fd, &fstat_args->stats);
+      break;
     case (SYS_fcntl):;
       sargs_SYS_fcntl* fcntl_args = (sargs_SYS_fcntl*)syscall_info->data;
       printf("fcntl fd: %d\n", fcntl_args->fd);
@@ -72,10 +72,10 @@ incoming_syscall(struct edge_call* edge_call) {
       break;
     case (SYS_getcwd):;  // TODO: how to handle string return
       sargs_SYS_getcwd* getcwd_args = (sargs_SYS_getcwd*)syscall_info->data;
-			retbuf = getcwd(getcwd_args->buf, getcwd_args->size);
+      retbuf = getcwd(getcwd_args->buf, getcwd_args->size);
       printf("Buf contents: %s\n", getcwd_args->buf);
       is_str_ret = 1;
-			break;
+      break;
     // case (SYS_ioctl):;
     //   sargs_SYS_ioctl* ioctl_args = (sargs_SYS_ioctl*)syscall_info->data;
     //   ret = ioctl(ioctl_args->fd, ioctl_args->request, ioctl_args->arg);
@@ -115,12 +115,12 @@ incoming_syscall(struct edge_call* edge_call) {
       break;
     case (SYS_getcwd):;  // TODO: how to handle string return
       sargs_SYS_getcwd* getcwd_args = (sargs_SYS_getcwd*) syscall_info->data;
-			getcwd(getcwd_args->buf, getcwd_args->size);
-			break;
+      getcwd(getcwd_args->buf, getcwd_args->size);
+      break;
     case(SYS_chdir):;
       sargs_SYS_chdir* chdir_args = (sargs_SYS_chdir*) syscall_info->data;
-			ret = chdir(chdir_args->path);
-			break;
+      ret = chdir(chdir_args->path);
+      break;
     case (SYS_epoll_ctl):;
       sargs_SYS_epoll_ctl *epoll_ctl_args = (sargs_SYS_epoll_ctl *) syscall_info->data;
       ret = epoll_ctl(epoll_ctl_args->epfd, epoll_ctl_args->op, epoll_ctl_args->fd, (struct epoll_event * ) &epoll_ctl_args->event);
