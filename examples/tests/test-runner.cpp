@@ -45,6 +45,7 @@ copy_report(void* buffer) {
   Report report;
 
   report.fromBytes((unsigned char*)buffer);
+  report.printPretty();
 
   if (report.checkSignaturesOnly(_sanctum_dev_public_key)) {
     printf("Attestation report SIGNATURE is valid\n");
