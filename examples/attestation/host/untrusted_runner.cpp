@@ -2,6 +2,8 @@
 // Copyright (c) 2018, The Regents of the University of California (Regents).
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
+#include <stdio.h>
+
 #include "edge/edge_call.h"
 #include "host/keystone.h"
 #include "verifier/report.h"
@@ -17,6 +19,8 @@ copy_report(void* buffer) {
     Report report;
 
     report.fromBytes((unsigned char*)buffer);
+
+    report.printPretty();
 
     if (report.checkSignaturesOnly(_sanctum_dev_public_key)) {
         printf("Attestation report SIGNATURE is valid\n");
