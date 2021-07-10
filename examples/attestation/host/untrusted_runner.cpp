@@ -5,9 +5,12 @@
 #include "edge/edge_call.h"
 #include "host/keystone.h"
 #include "verifier/report.h"
+#include "verifier/test_dev_key.h"
 
 using namespace Keystone;
 
+// TODO: Share his with eapp.
+#define OCALL_COPY_REPORT 3
 
 void
 copy_report(void* buffer) {

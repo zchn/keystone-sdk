@@ -2,8 +2,11 @@
 
 #include "app/syscall.h"
 
+// TODO: Share his with host.
+#define OCALL_COPY_REPORT 3
+
 void ocall_copy_report(void* report, size_t len) {
-    ocall(3, report, len, 0, 0);
+    ocall(OCALL_COPY_REPORT, report, len, 0, 0);
 }
 
 int main()
