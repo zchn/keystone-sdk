@@ -21,7 +21,9 @@ main(int argc, char** argv) {
   edge_call_init_internals(
       (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
 
-  enclave.run();
+  uintptr_t encl_ret;
+  enclave.run(&encl_ret);
+  printf("Enclave returned %d.\r\n", encl_ret);
 
   return 0;
 }
