@@ -14,7 +14,7 @@ endif()
 # eapp
 
 add_executable(${eapp_bin} ${eapp_src})
-target_link_libraries(${eapp_bin} "-static")
+target_link_libraries(${eapp_bin} "-static" ${KEYSTONE_LIB_EAPP})
 
 # host
 
