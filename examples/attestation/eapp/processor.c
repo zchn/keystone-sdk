@@ -2,6 +2,6 @@
 
 int main()
 {
-  printf("hello, world!\n");
+  printf("I am the processor in the enclave!\n");
   return 0;
 }
