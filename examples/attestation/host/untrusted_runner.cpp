@@ -20,12 +20,23 @@ copy_report(void* buffer) {
 
     report.fromBytes((unsigned char*)buffer);
 
-    report.printPretty();
-
     if (report.checkSignaturesOnly(_sanctum_dev_public_key)) {
         printf("Attestation report SIGNATURE is valid\n");
     } else {
         printf("Attestation report is invalid\n");
+        report.printPretty();
+    }
+
+    byte expected_enclave_hash[MDSIZE];
+    byte expected_sm_hash[MDSIZE];
+
+    if(report.verify(expected_enclave_hash, expected_sm_hash,
+                     _sanctum_dev_public_key)) {
+        printf("Enclave and SM hashes match with expected.\n");
+    } else {
+        printf("Either the enclave hash or the SM hash (or both) does not "
+               "match with expeced.\n");
+        report.printPretty();
     }
 }
 
