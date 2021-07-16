@@ -45,6 +45,7 @@ jobs:
               make check
               make uninstall
               make format
+              find /keystone
   build-install-examples-32:
     executor: setup-rv32gc
     working_directory: /keystone/sdk
