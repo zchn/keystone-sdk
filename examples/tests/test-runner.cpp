@@ -96,11 +96,10 @@ copy_report(void* buffer) {
       enclave.init(g_eapp_file, g_rt_file, params);
       memcpy(expected_enclave_hash, enclave.getHash(), MDSIZE);
   }
-
-  char* firmware_content = "TODO: actually compute the SM hash from passed in firmware.";
-  compute_sm_hash(expected_sm_hash, (byte *)firmware_content, strlen(firmware_content));
-
   // memcpy(expected_enclave_hash, report.getEnclaveHash(), MDSIZE);
+
+  // char* firmware_content = "TODO: actually compute the SM hash from passed in firmware.";
+  // compute_sm_hash(expected_sm_hash, (byte *)firmware_content, strlen(firmware_content));
   memcpy(expected_sm_hash, report.getSmHash(), MDSIZE);
 
   if(report.verify(expected_enclave_hash, expected_sm_hash,
