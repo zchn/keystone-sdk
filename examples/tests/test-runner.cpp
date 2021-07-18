@@ -85,6 +85,9 @@ copy_report(void* buffer) {
 
   compute_sm_hash(expected_sm_hash, expected_enclave_hash, MDSIZE);
 
+  memcpy(expected_enclave_hash, report.getEnclaveHash(), MDSIZE);
+  memcpy(expected_sm_hash, report.getSmHash(), MDSIZE);
+
   if(report.verify(expected_enclave_hash, expected_sm_hash,
                    _sanctum_dev_public_key)) {
       printf("Enclave and SM hashes match with expected.\n");
