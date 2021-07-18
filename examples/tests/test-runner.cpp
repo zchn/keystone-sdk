@@ -42,7 +42,7 @@ print_hex(void* buffer, size_t len) {
 }
 
 int
-compute_sm_hash(byte *sm_hash, const byte *fw_content, size_t fw_size) {
+compute_sm_hash(byte *sm_hash, const byte *firmware_content, size_t firmware_size) {
   // keystone/bootrom/bootloader.c#L81 for how it is computed in the bootloader.
   const size_t sanctum_sm_size = 0x1ff000;
   byte *buf = (byte *)malloc(sanctum_sm_size);
@@ -51,7 +51,7 @@ compute_sm_hash(byte *sm_hash, const byte *fw_content, size_t fw_size) {
       return -1;
   }
   memset(buf, 0, sanctum_sm_size);
-  memcpy(buf, fw_content, fw_size);
+  memcpy(buf, firmware_content, firmware_size);
   sha3_ctx_t hash_ctx;
   sha3_init(&hash_ctx, MDSIZE);
   sha3_update(&hash_ctx, buf, sanctum_sm_size);
@@ -68,6 +68,11 @@ compute_sm_hash(byte *sm_hash, const byte *fw_content, size_t fw_size) {
   printf("unsigned int sm_expected_hash_len = %d;\n", MDSIZE);
 }
 
+
+Keystone::Params *g_params = NULL;
+char* g_eapp_file = NULL;
+char* g_rt_file   = NULL;
+
 void
 copy_report(void* buffer) {
   Report report;
@@ -83,9 +88,19 @@ copy_report(void* buffer) {
   byte expected_enclave_hash[MDSIZE];
   byte expected_sm_hash[MDSIZE];
 
-  compute_sm_hash(expected_sm_hash, expected_enclave_hash, MDSIZE);
+  {
+      Keystone::Enclave enclave;
+      Keystone::Params params = *g_params;
+      params.setSimulated(true);
+      // This will cause validate_and_hash_enclave to be called when isSimulated() == true.
+      enclave.init(g_eapp_file, g_rt_file, params);
+      memcpy(expected_enclave_hash, enclave.getHash(), MDSIZE);
+  }
 
-  memcpy(expected_enclave_hash, report.getEnclaveHash(), MDSIZE);
+  char* firmware_content = "TODO: actually compute the SM hash from passed in firmware.";
+  compute_sm_hash(expected_sm_hash, (byte *)firmware_content, strlen(firmware_content));
+
+  // memcpy(expected_enclave_hash, report.getEnclaveHash(), MDSIZE);
   memcpy(expected_sm_hash, report.getSmHash(), MDSIZE);
 
   if(report.verify(expected_enclave_hash, expected_sm_hash,
@@ -165,6 +180,11 @@ main(int argc, char** argv) {
   if (self_timing) {
     asm volatile("rdcycle %0" : "=r"(cycles1));
   }
+
+  // TODO(zchn): use a real remote verifier instead.
+  g_params = &params;
+  g_eapp_file = eapp_file;
+  g_rt_file = rt_file;
 
   enclave.init(eapp_file, rt_file, params);
 
