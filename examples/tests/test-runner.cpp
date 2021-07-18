@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <iostream>
 #include "edge_wrapper.h"
+#include "common/sha3.h"
 #include "host/keystone.h"
 #include "verifier/report.h"
 #include "verifier/test_dev_key.h"
@@ -40,6 +41,33 @@ print_hex(void* buffer, size_t len) {
   printf("\n");
 }
 
+int
+compute_sm_hash(byte *sm_hash, const byte *fw_content, size_t fw_size) {
+  // keystone/bootrom/bootloader.c#L81 for how it is computed in the bootloader.
+  const size_t sanctum_sm_size = 0x1ff000;
+  byte *buf = (byte *)malloc(sanctum_sm_size);
+  if (!buf) {
+      printf("Failed to allocate buffer\n");
+      return -1;
+  }
+  memset(buf, 0, sanctum_sm_size);
+  memcpy(buf, fw_content, fw_size);
+  sha3_ctx_t hash_ctx;
+  sha3_init(&hash_ctx, MDSIZE);
+  sha3_update(&hash_ctx, buf, sanctum_sm_size);
+  sha3_final(sm_hash, &hash_ctx);
+
+  printf("unsigned char sm_expected_hash[] = {");
+  for (int i=0; i < MDSIZE; i++) {
+      if (i % 8 == 0) {
+          printf("\n");
+      }
+      printf("0x%.2x,", sm_hash[i]);
+  }
+  printf("};\n");
+  printf("unsigned int sm_expected_hash_len = %d;\n", MDSIZE);
+}
+
 void
 copy_report(void* buffer) {
   Report report;
@@ -54,6 +82,8 @@ copy_report(void* buffer) {
 
   byte expected_enclave_hash[MDSIZE];
   byte expected_sm_hash[MDSIZE];
+
+  compute_sm_hash(expected_sm_hash, expected_enclave_hash, MDSIZE);
 
   if(report.verify(expected_enclave_hash, expected_sm_hash,
                    _sanctum_dev_public_key)) {
