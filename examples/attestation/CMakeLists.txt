@@ -3,7 +3,7 @@ set(eapp_src eapp/processor.c)
 set(host_bin untrusted-runner)
 set(host_src host/untrusted_runner.cpp)
 set(package_name "processor.ke")
-set(package_script "./untrusted-runner hello eyrie-rt")
+set(package_script "./untrusted-runner processor eyrie-rt")
 
 if(RISCV32)
   set(eyrie_plugins "freemem untrusted_io_syscall linux_syscall env_setup rv32")
