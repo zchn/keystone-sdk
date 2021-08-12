@@ -3,6 +3,7 @@
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
 #include <getopt.h>
+#include <errno.h>
 #include <cstdio>
 #include <iostream>
 #include "edge_wrapper.h"
@@ -10,6 +11,8 @@
 #include "host/keystone.h"
 #include "verifier/report.h"
 #include "verifier/test_dev_key.h"
+
+extern int errno;
 
 const char* longstr = "hellohellohellohellohellohellohellohellohellohello";
 
@@ -72,6 +75,7 @@ compute_sm_hash(byte *sm_hash, const byte *firmware_content, size_t firmware_siz
 Keystone::Params *g_params = NULL;
 char* g_eapp_file = NULL;
 char* g_rt_file   = NULL;
+char* g_sm_bin_file   = NULL;
 
 void
 copy_report(void* buffer) {
@@ -92,15 +96,48 @@ copy_report(void* buffer) {
       Keystone::Enclave enclave;
       Keystone::Params params = *g_params;
       params.setSimulated(true);
-      // This will cause validate_and_hash_enclave to be called when isSimulated() == true.
+      // This will cause validate_and_hash_enclave to be called when
+      // isSimulated() == true.
       enclave.init(g_eapp_file, g_rt_file, params);
       memcpy(expected_enclave_hash, enclave.getHash(), MDSIZE);
   }
-  // memcpy(expected_enclave_hash, report.getEnclaveHash(), MDSIZE);
 
-  // char* firmware_content = "TODO: actually compute the SM hash from passed in firmware.";
-  // compute_sm_hash(expected_sm_hash, (byte *)firmware_content, strlen(firmware_content));
-  memcpy(expected_sm_hash, report.getSmHash(), MDSIZE);
+  byte* sm_content = NULL;
+  size_t sm_size = 0;
+  {
+      printf("Trying to open g_sm_bin_file: %s\n", g_sm_bin_file);
+      // TODO(zchn): This open will fail because we have not yet added the fw bin to qemu's image.
+      FILE* sm_bin = fopen(g_sm_bin_file, "rb");
+      if (sm_bin == NULL) {
+          printf("Failed to open SM bin file: %s. Error: %s\n", g_sm_bin_file, strerror(errno));
+          exit(1);
+      }
+      // obtain file size:
+      fseek(sm_bin, 0 , SEEK_END);
+      sm_size = ftell(sm_bin);
+      rewind(sm_bin);
+      printf("Got sm_size");
+
+      // allocate memory to contain the whole file:
+      sm_content = (byte*)malloc(sizeof(byte)*sm_size + 10);
+      printf("Got sm_content");
+      if (sm_content == NULL) {
+          printf("Failed to allocate memory for SM content. Error: %s\n", strerror(errno));
+          exit(1);
+      }
+
+      // copy the file into the buffer:
+      if (sm_size != fread(sm_content, 1, sm_size, sm_bin)) {
+          printf("sm_size is not equal to the size of the content successfully read\n");
+          exit(1);
+      }
+
+      // terminate
+      fclose(sm_bin);
+  }
+  compute_sm_hash(expected_sm_hash, sm_content,sm_size);
+  free(sm_content);
+  // memcpy(expected_sm_hash, report.getSmHash(), MDSIZE);
 
   if(report.verify(expected_enclave_hash, expected_sm_hash,
                    _sanctum_dev_public_key)) {
@@ -117,7 +154,7 @@ main(int argc, char** argv) {
   if (argc < 3 || argc > 8) {
     printf(
         "Usage: %s <eapp> <runtime> [--utm-size SIZE(K)] [--freemem-size "
-        "SIZE(K)] [--time] [--load-only] [--utm-ptr 0xPTR] [--retval EXPECTED]\n",
+        "SIZE(K)] [--time] [--load-only] [--utm-ptr 0xPTR] [--retval EXPECTED] [--sm-bin SM_BIN_PATH]\n",
         argv[0]);
     return 0;
   }
@@ -138,6 +175,7 @@ main(int argc, char** argv) {
       {"utm-ptr", required_argument, 0, 'p'},
       {"freemem-size", required_argument, 0, 'f'},
       {"retval", required_argument, 0, 'r'},
+      {"sm-bin", required_argument, 0, 's'},
       {0, 0, 0, 0}};
 
   char* eapp_file = argv[1];
@@ -146,7 +184,7 @@ main(int argc, char** argv) {
   int c;
   int opt_index = 3;
   while (1) {
-    c = getopt_long(argc, argv, "u:p:f:", long_options, &opt_index);
+    c = getopt_long(argc, argv, "u:p:f:s:", long_options, &opt_index);
 
     if (c == -1) break;
 
@@ -162,9 +200,12 @@ main(int argc, char** argv) {
       case 'f':
         freemem_size = atoi(optarg) * 1024;
         break;
-      case 'r':
+    case 'r':
         retval_exist = true;
         retval = atoi(optarg);
+        break;
+    case 's':
+        g_sm_bin_file = optarg;
         break;
     }
   }
