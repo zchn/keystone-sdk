@@ -80,9 +80,9 @@ foreach (test IN ITEMS ${all_test_bins})
   file(APPEND ${test_script_tmp} "echo 'testing ${test}'\n")
   if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${test}/retval)
     execute_process(COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/${test}/retval OUTPUT_VARIABLE retval OUTPUT_STRIP_TRAILING_WHITESPACE)
-    file(APPEND ${test_script_tmp} "./${host_bin} ${test} eyrie-rt --retval ${retval} --sm-bin ${fw_bin}\n")
+    file(APPEND ${test_script_tmp} "./${host_bin} ${test} eyrie-rt --retval ${retval} --sm-bin fw_payload.bin\n")
   else()
-    file(APPEND ${test_script_tmp} "./${host_bin} ${test} eyrie-rt --sm-bin ${fw_bin}\n")
+    file(APPEND ${test_script_tmp} "./${host_bin} ${test} eyrie-rt --sm-bin fw_payload.bin\n")
   endif()
 endforeach(test)
 
@@ -114,6 +114,7 @@ add_keystone_package(test-package
   ${package_name}
   ${package_script}
   ${test_script} ${eyrie_files_to_copy} ${all_test_bins} ${host_bin}
+  ${fw_bin}
   )
 
 add_dependencies(test-package test-eyrie)

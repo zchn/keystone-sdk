@@ -35,15 +35,6 @@ get_host_string() {
 
 static struct report_t report;
 
-void
-print_hex(void* buffer, size_t len) {
-  int i;
-  for (i = 0; i < len; i += sizeof(uintptr_t)) {
-    printf("%.16lx ", *((uintptr_t*)((uintptr_t)buffer + i)));
-  }
-  printf("\n");
-}
-
 int
 compute_sm_hash(byte *sm_hash, const byte *firmware_content, size_t firmware_size) {
   // keystone/bootrom/bootloader.c#L81 for how it is computed in the bootloader.
@@ -59,16 +50,8 @@ compute_sm_hash(byte *sm_hash, const byte *firmware_content, size_t firmware_siz
   sha3_init(&hash_ctx, MDSIZE);
   sha3_update(&hash_ctx, buf, sanctum_sm_size);
   sha3_final(sm_hash, &hash_ctx);
-
-  printf("unsigned char sm_expected_hash[] = {");
-  for (int i=0; i < MDSIZE; i++) {
-      if (i % 8 == 0) {
-          printf("\n");
-      }
-      printf("0x%.2x,", sm_hash[i]);
-  }
-  printf("};\n");
-  printf("unsigned int sm_expected_hash_len = %d;\n", MDSIZE);
+  free(buf);
+  return 0;
 }
 
 
@@ -104,40 +87,37 @@ copy_report(void* buffer) {
 
   byte* sm_content = NULL;
   size_t sm_size = 0;
-  {
-      printf("Trying to open g_sm_bin_file: %s\n", g_sm_bin_file);
-      // TODO(zchn): This open will fail because we have not yet added the fw bin to qemu's image.
-      FILE* sm_bin = fopen(g_sm_bin_file, "rb");
-      if (sm_bin == NULL) {
-          printf("Failed to open SM bin file: %s. Error: %s\n", g_sm_bin_file, strerror(errno));
-          exit(1);
-      }
-      // obtain file size:
-      fseek(sm_bin, 0 , SEEK_END);
-      sm_size = ftell(sm_bin);
-      rewind(sm_bin);
-      printf("Got sm_size");
-
-      // allocate memory to contain the whole file:
-      sm_content = (byte*)malloc(sizeof(byte)*sm_size + 10);
-      printf("Got sm_content");
-      if (sm_content == NULL) {
-          printf("Failed to allocate memory for SM content. Error: %s\n", strerror(errno));
-          exit(1);
-      }
-
-      // copy the file into the buffer:
-      if (sm_size != fread(sm_content, 1, sm_size, sm_bin)) {
-          printf("sm_size is not equal to the size of the content successfully read\n");
-          exit(1);
-      }
-
-      // terminate
-      fclose(sm_bin);
+  // TODO(zchn): This open will fail because we have not yet added the fw bin to qemu's image.
+  FILE* sm_bin = fopen(g_sm_bin_file, "rb");
+  if (sm_bin == NULL) {
+      printf("Failed to open SM bin file: %s. Error: %s\n", g_sm_bin_file, strerror(errno));
+      exit(1);
   }
-  compute_sm_hash(expected_sm_hash, sm_content,sm_size);
-  free(sm_content);
-  // memcpy(expected_sm_hash, report.getSmHash(), MDSIZE);
+  // obtain file size:
+  fseek(sm_bin, 0 , SEEK_END);
+  sm_size = ftell(sm_bin);
+  rewind(sm_bin);
+
+  // allocate memory to contain the whole file:
+  sm_content = (byte*)malloc(sizeof(byte)*sm_size + 10);
+  if (sm_content == NULL) {
+      printf("Failed to allocate memory for SM content. Error: %s\n", strerror(errno));
+      exit(1);
+  }
+
+  // copy the file into the buffer:
+  if (sm_size != fread(sm_content, 1, sm_size, sm_bin)) {
+      printf("sm_size is not equal to the size of the content successfully read\n");
+      exit(1);
+  }
+
+  // terminate
+  fclose(sm_bin);
+
+  compute_sm_hash(expected_sm_hash, sm_content, sm_size);
+
+  // TODO(zchn): Fix the "invalid pointer" error when uncommenting this.
+  // free(sm_content);
 
   if(report.verify(expected_enclave_hash, expected_sm_hash,
                    _sanctum_dev_public_key)) {
