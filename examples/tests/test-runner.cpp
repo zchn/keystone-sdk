@@ -2,10 +2,12 @@
 // Copyright (c) 2018, The Regents of the University of California (Regents).
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
-#include <getopt.h>
-#include <errno.h>
 #include <cstdio>
+#include <errno.h>
+#include <getopt.h>
 #include <iostream>
+#include <stdexcept>
+
 #include "edge_wrapper.h"
 #include "common/sha3.h"
 #include "host/keystone.h"
@@ -14,36 +16,20 @@
 
 extern int errno;
 
-const char* longstr = "hellohellohellohellohellohellohellohellohellohello";
-
-unsigned long
-print_buffer(char* str) {
-  printf("Enclave said: %s", str);
-  return strlen(str);
-}
-
-void
-print_value(unsigned long val) {
-  printf("Enclave said value: %u\n", val);
-  return;
-}
-
-const char*
-get_host_string() {
-  return longstr;
-}
-
 static struct report_t report;
 
+const char* longstr = "hellohellohellohellohellohellohellohellohellohello";
+const char* get_host_string() {
+    return longstr;
+}
+
 int
-compute_sm_hash(byte *sm_hash, const byte *firmware_content, size_t firmware_size) {
+compute_sm_hash(byte *sm_hash, const byte *firmware_content,
+                size_t firmware_size) {
   // keystone/bootrom/bootloader.c#L81 for how it is computed in the bootloader.
   const size_t sanctum_sm_size = 0x1ff000;
   byte *buf = (byte *)malloc(sanctum_sm_size);
-  if (!buf) {
-      printf("Failed to allocate buffer\n");
-      return -1;
-  }
+  if (!buf) throw std::runtime_error{"Failed to allocate buffer"};
   memset(buf, 0, sanctum_sm_size);
   memcpy(buf, firmware_content, firmware_size);
   sha3_ctx_t hash_ctx;
@@ -89,10 +75,9 @@ copy_report(void* buffer) {
   size_t sm_size = 0;
   // TODO(zchn): This open will fail because we have not yet added the fw bin to qemu's image.
   FILE* sm_bin = fopen(g_sm_bin_file, "rb");
-  if (sm_bin == NULL) {
-      printf("Failed to open SM bin file: %s. Error: %s\n", g_sm_bin_file, strerror(errno));
-      exit(1);
-  }
+  if (sm_bin == NULL)
+      throw std::runtime_error{std::string("Failed to open SM bin file: ")
+              + g_sm_bin_file + " Error: " + strerror(errno)};
   // obtain file size:
   fseek(sm_bin, 0 , SEEK_END);
   sm_size = ftell(sm_bin);
@@ -100,16 +85,15 @@ copy_report(void* buffer) {
 
   // allocate memory to contain the whole file:
   sm_content = (byte*)malloc(sizeof(byte)*sm_size + 10);
-  if (sm_content == NULL) {
-      printf("Failed to allocate memory for SM content. Error: %s\n", strerror(errno));
-      exit(1);
-  }
+  if (sm_content == NULL)
+      throw std::runtime_error{
+          std::string("Failed to allocate memory for SM content. Error: ")
+              + strerror(errno)};
 
   // copy the file into the buffer:
-  if (sm_size != fread(sm_content, 1, sm_size, sm_bin)) {
-      printf("sm_size is not equal to the size of the content successfully read\n");
-      exit(1);
-  }
+  if (sm_size != fread(sm_content, 1, sm_size, sm_bin))
+      throw std::runtime_error{
+          "sm_size is not equal to the size of the content successfully read"};
 
   // terminate
   fclose(sm_bin);

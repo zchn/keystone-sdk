@@ -24,6 +24,13 @@ edge_init(Keystone::Enclave* enclave) {
   edge_call_init_internals(
       (uintptr_t)enclave->getSharedBuffer(), enclave->getSharedBufferSize());
 }
+
+unsigned long
+print_buffer(char* str) {
+    printf("Enclave said: %s", str);
+    return strlen(str);
+}
+
 void
 print_buffer_wrapper(void* buffer) {
   /* For now we assume the call struct is at the front of the shared
@@ -54,6 +61,12 @@ print_buffer_wrapper(void* buffer) {
   }
 
   return;
+}
+
+void
+print_value(unsigned long val) {
+    printf("Enclave said value: %u\n", val);
+    return;
 }
 
 void
