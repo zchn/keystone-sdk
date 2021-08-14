@@ -1,6 +1,3 @@
-set(host_bin test-runner)
-set(host_src test-runner.cpp edge_wrapper.cpp)
-
 if(RISCV32)
    set(eyrie_plugins "freemem rv32")
 else()
@@ -25,49 +22,57 @@ set(all_test_bins
   untrusted
   data-sealing)
 
-# and (2) define the recipe of the test below:
+set(all_runner_bins "")
+foreach (test IN ITEMS ${all_test_bins})
+  list(APPEND all_runner_bins test-${test})
+  add_executable(test-${test} ${test}/host/test-runner.cpp
+    ${test}/host/edge_wrapper.cpp)
+  target_link_libraries(test-${test} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE} ${KEYSTONE_LIB_VERIFIER})
+endforeach(test)
 
+# and (2) define the recipe of the test below:
 # stack
-add_executable(stack stack/stack.S)
+add_executable(stack stack/eapp/stack.S)
 target_link_libraries(stack ${KEYSTONE_LIB_EAPP})
 
 # loop
-add_executable(loop loop/loop.s)
+add_executable(loop loop/eapp/loop.s)
 target_link_libraries(loop ${KEYSTONE_LIB_EAPP})
 
 # malloc
-add_executable(malloc malloc/malloc.c)
+add_executable(malloc malloc/eapp/malloc.c)
 target_link_libraries(malloc ${KEYSTONE_LIB_EAPP})
 
 # long-nop
-add_executable(long-nop long-nop/long-nop.S ${CMAKE_CURRENT_BINARY_DIR}/add_long.S)
+add_executable(long-nop long-nop/eapp/long-nop.S ${CMAKE_CURRENT_BINARY_DIR}/add_long.S)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/add_long.S
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/long-nop/generate_func.sh 4097
   ${CMAKE_CURRENT_BINARY_DIR}/add_long.S
   ${CMAKE_CURRENT_SOURCE_DIR}/long-nop/nop.s
   ${CMAKE_CURRENT_SOURCE_DIR}/long-nop/func_base.s
   ${CMAKE_CURRENT_SOURCE_DIR}/long-nop/nop.h
-)
+  )
 target_link_libraries(long-nop ${KEYSTONE_LIB_EAPP})
 
 # fibonacci
-add_executable(fibonacci fibonacci/fibonacci.c)
+add_executable(fibonacci fibonacci/eapp/fibonacci.c)
 target_link_libraries(fibonacci ${KEYSTONE_LIB_EAPP})
 
 # fib-bench
-add_executable(fib-bench fib-bench/fib-bench.c)
+add_executable(fib-bench fib-bench/eapp/fib-bench.c)
 target_link_libraries(fib-bench ${KEYSTONE_LIB_EAPP})
 
 # attestation
-add_executable(attestation attestation/attestation.c attestation/edge_wrapper.c)
+add_executable(attestation attestation/eapp/attestation.c
+  attestation/eapp/edge_wrapper.c)
 target_link_libraries(attestation ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
 
 # untrusted
-add_executable(untrusted untrusted/untrusted.c untrusted/edge_wrapper.c)
+add_executable(untrusted untrusted/eapp/untrusted.c untrusted/eapp/edge_wrapper.c)
 target_link_libraries(untrusted ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
 
 # data-sealing
-add_executable(data-sealing data-sealing/data-sealing.c)
+add_executable(data-sealing data-sealing/eapp/data-sealing.c)
 target_link_libraries(data-sealing ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
 
 ###############################################
@@ -80,9 +85,9 @@ foreach (test IN ITEMS ${all_test_bins})
   file(APPEND ${test_script_tmp} "echo 'testing ${test}'\n")
   if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${test}/retval)
     execute_process(COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/${test}/retval OUTPUT_VARIABLE retval OUTPUT_STRIP_TRAILING_WHITESPACE)
-    file(APPEND ${test_script_tmp} "./${host_bin} ${test} eyrie-rt --retval ${retval} --sm-bin fw_payload.bin\n")
+    file(APPEND ${test_script_tmp} "./test-${test} ${test} eyrie-rt --retval ${retval} --sm-bin fw_payload.bin\n")
   else()
-    file(APPEND ${test_script_tmp} "./${host_bin} ${test} eyrie-rt --sm-bin fw_payload.bin\n")
+    file(APPEND ${test_script_tmp} "./test-${test} ${test} eyrie-rt --sm-bin fw_payload.bin\n")
   endif()
 endforeach(test)
 
@@ -94,11 +99,6 @@ file(REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/tmp)
 set_target_properties(${all_test_bins}
   PROPERTIES LINK_FLAGS "-nostdlib -static -T ${CMAKE_CURRENT_SOURCE_DIR}/app.lds")
 ###############################################
-
-# host
-
-add_executable(${host_bin} ${host_src})
-target_link_libraries(${host_bin} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE} ${KEYSTONE_LIB_VERIFIER})
 
 # add target for Eyrie runtime (see keystone.cmake)
 
@@ -113,7 +113,7 @@ add_eyrie_runtime(test-eyrie
 add_keystone_package(test-package
   ${package_name}
   ${package_script}
-  ${test_script} ${eyrie_files_to_copy} ${all_test_bins} ${host_bin}
+  ${test_script} ${eyrie_files_to_copy} ${all_test_bins} ${all_runner_bins}
   ${fw_bin}
   )
 
