@@ -3,25 +3,17 @@
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
 #include <cstdio>
-#include <errno.h>
-#include <getopt.h>
+#include <cerrno>
 #include <iostream>
 #include <stdexcept>
+
+#include <getopt.h>
 
 #include "edge_wrapper.h"
 #include "common/sha3.h"
 #include "host/keystone.h"
 #include "verifier/report.h"
 #include "verifier/test_dev_key.h"
-
-extern int errno;
-
-static struct report_t report;
-
-const char* longstr = "hellohellohellohellohellohellohellohellohellohello";
-const char* get_host_string() {
-    return longstr;
-}
 
 int
 compute_sm_hash(byte *sm_hash, const byte *firmware_content,
@@ -77,7 +69,7 @@ copy_report(void* buffer) {
   FILE* sm_bin = fopen(g_sm_bin_file, "rb");
   if (sm_bin == NULL)
       throw std::runtime_error{std::string("Failed to open SM bin file: ")
-              + g_sm_bin_file + " Error: " + strerror(errno)};
+              + g_sm_bin_file + " Error: " + std::strerror(errno)};
   // obtain file size:
   fseek(sm_bin, 0 , SEEK_END);
   sm_size = ftell(sm_bin);
@@ -88,7 +80,7 @@ copy_report(void* buffer) {
   if (sm_content == NULL)
       throw std::runtime_error{
           std::string("Failed to allocate memory for SM content. Error: ")
-              + strerror(errno)};
+              + std::strerror(errno)};
 
   // copy the file into the buffer:
   if (sm_size != fread(sm_content, 1, sm_size, sm_bin))
