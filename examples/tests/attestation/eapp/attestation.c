@@ -15,6 +15,12 @@ void EAPP_ENTRY eapp_entry(){
   struct edge_data retdata;
   ocall_get_string(&retdata);
 
+  for(int i = 1; i <= 10000; i++) {
+      if (i % 5000 == 0) {
+          ocall_print_value(i);
+      }
+  }
+
   void* nonce = malloc(retdata.size);
   copy_from_shared(nonce, retdata.offset, retdata.size);
 
