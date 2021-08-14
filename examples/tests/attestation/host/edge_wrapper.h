@@ -27,6 +27,6 @@ void copy_report_wrapper(void* buffer);
 void copy_report(void* shared_buffer);
 
 void get_host_string_wrapper(void* buffer);
-const char* get_host_string();
+std::string get_host_string();
 
 #endif /* _EDGE_WRAPPER_H_ */
