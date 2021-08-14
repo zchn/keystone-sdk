@@ -113,11 +113,6 @@ copy_report_wrapper(void* buffer) {
 }
 
 
-const char* longstr = "hellohellohellohellohellohellohellohellohellohello";
-const char* get_host_string() {
-    return longstr;
-}
-
 void
 get_host_string_wrapper(void* buffer) {
   /* For now we assume the call struct is at the front of the shared

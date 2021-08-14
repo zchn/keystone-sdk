@@ -5,16 +5,21 @@
 #include "app/eapp_utils.h"
 #include "app/string.h"
 #include "app/syscall.h"
-
+#include "app/malloc.h"
+#include "edge/edge_call.h"
 #include "edge_wrapper.h"
 
 void EAPP_ENTRY eapp_entry(){
   edge_init();
 
-  char* data = "nonce";
-  char buffer[2048];
+  struct edge_data retdata;
+  ocall_get_string(&retdata);
 
-  attest_enclave((void*) buffer, data, 5);
+  void* nonce = malloc(retdata.size);
+  copy_from_shared(nonce, retdata.offset, retdata.size);
+
+  char buffer[2048];
+  attest_enclave((void*) buffer, nonce, retdata.size);
 
   ocall_copy_report(buffer, 2048);
 

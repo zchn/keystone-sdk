@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include <getopt.h>
+#include <stdlib.h>
 
 #include "edge_wrapper.h"
 #include "common/sha3.h"
@@ -37,6 +38,11 @@ Keystone::Params *g_params = NULL;
 char* g_eapp_file = NULL;
 char* g_rt_file   = NULL;
 char* g_sm_bin_file   = NULL;
+
+char g_nonce[9] = {0};
+const char* get_host_string() {
+    return g_nonce;
+}
 
 void
 copy_report(void* buffer) {
@@ -102,6 +108,19 @@ copy_report(void* buffer) {
       printf("Either the enclave hash or the SM hash (or both) does not "
              "match with expeced.\n");
       report.printPretty();
+  }
+
+  if(report.getDataSize() != strlen(g_nonce) + 1) {
+      const char error[] = "The size of the data in the report is not equal to the size of the nonce initially sent.";
+      printf(error);
+      report.printPretty();
+      throw std::runtime_error(error);
+  }
+
+  if(0 == strcmp(g_nonce, (char*)report.getDataSection())) {
+      printf("Returned data in the report match with the nonce sent.\n");
+  } else {
+      printf("Returned data in the report do NOT match with the nonce sent.\n");
   }
 }
 
@@ -193,6 +212,8 @@ main(int argc, char** argv) {
   if (self_timing) {
     asm volatile("rdcycle %0" : "=r"(cycles3));
   }
+
+  sprintf(g_nonce, "%08x", random() % 0x100000000);
 
   uintptr_t encl_ret;
   if (!load_only) enclave.run(&encl_ret);
