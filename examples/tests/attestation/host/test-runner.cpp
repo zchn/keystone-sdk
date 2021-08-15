@@ -54,6 +54,10 @@ get_report() {
   return *g_report;
 }
 
+/****************************************************************
+ * Declarations for the Host class and the Verifier class.
+ ****************************************************************/
+
 // The Host class mimicks a host interacting with the local enclave
 // and the remote verifier.
 class Host {
@@ -72,27 +76,6 @@ class Host {
   const std::string eapp_file_;
   const std::string rt_file_;
 };
-
-Report
-Host::run(const std::string& nonce) {
-  Keystone::Enclave enclave;
-  enclave.init(eapp_file_.c_str(), rt_file_.c_str(), params_);
-
-  // Leaves the nonce in a global variable so the enclave can get it
-  // when making OCALL_GET_STRING ocall. See get_host_string_wrapper()
-  // in edge_wrapper.cpp for how this is implemented under the hood.
-  set_host_string(nonce);
-
-  edge_init(&enclave);
-
-  uintptr_t encl_ret;
-  enclave.run(&encl_ret);
-
-  // There should already be a report sent from the enclave after the
-  // enclave finishes running. See copy_report_wrapper for how this is
-  // implemented under the hood.
-  return get_report();
-}
 
 class Verifier {
  public:
@@ -137,6 +120,31 @@ class Verifier {
   const std::string rt_file_;
   const std::string sm_bin_file_;
 };
+
+/****************************************************************
+ * Class method definitions.
+ ****************************************************************/
+
+Report
+Host::run(const std::string& nonce) {
+  Keystone::Enclave enclave;
+  enclave.init(eapp_file_.c_str(), rt_file_.c_str(), params_);
+
+  // Leaves the nonce in a global variable so the enclave can get it
+  // when making OCALL_GET_STRING ocall. See get_host_string_wrapper()
+  // in edge_wrapper.cpp for how this is implemented under the hood.
+  set_host_string(nonce);
+
+  edge_init(&enclave);
+
+  uintptr_t encl_ret;
+  enclave.run(&encl_ret);
+
+  // There should already be a report sent from the enclave after the
+  // enclave finishes running. See copy_report_wrapper for how this is
+  // implemented under the hood.
+  return get_report();
+}
 
 void
 Verifier::run() {
@@ -245,6 +253,10 @@ Verifier::debug_verify(Report& report, const byte* dev_public_key) {
     printf("Attestation report is invalid\n");
   }
 }
+
+/****************************************************************
+ * The main function.
+ ****************************************************************/
 
 int
 main(int argc, char** argv) {
