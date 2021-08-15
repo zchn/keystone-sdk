@@ -21,7 +21,8 @@ void EAPP_ENTRY eapp_entry(){
       }
   }
 
-  void* nonce = malloc(retdata.size);
+  char nonce[2048];
+  if (retdata.size > 2048) retdata.size = 2048;
   copy_from_shared(nonce, retdata.offset, retdata.size);
 
   char buffer[2048];

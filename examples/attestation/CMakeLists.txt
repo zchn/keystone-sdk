@@ -1,7 +1,7 @@
 set(eapp_bin attestor)
-set(eapp_src eapp/attestor.c)
+set(eapp_src eapp/attestor.c eapp/edge_wrapper.c)
 set(host_bin attestor-runner)
-set(host_src host/attestor-runner.cpp)
+set(host_src host/attestor-runner.cpp host/edge_wrapper.cpp)
 set(package_name "attestor.ke")
 set(package_script "./attestor-runner attestor eyrie-rt")
 
