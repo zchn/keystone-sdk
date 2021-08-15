@@ -1,11 +1,11 @@
+set(package_name "tests.ke")
+set(package_script "./run-test.sh")
+
 if(RISCV32)
    set(eyrie_plugins "freemem rv32")
 else()
    set(eyrie_plugins "freemem")
 endif()
-
-set(package_name "tests.ke")
-set(package_script "./run-test.sh")
 
 ###############################################
 #                Test Apps                    #
@@ -25,6 +25,7 @@ set(all_test_bins
 set(all_runner_bins "")
 foreach (test IN ITEMS ${all_test_bins})
   list(APPEND all_runner_bins test-${test})
+  # host
   add_executable(test-${test} ${test}/host/test-runner.cpp
     ${test}/host/edge_wrapper.cpp)
   target_link_libraries(test-${test} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE} ${KEYSTONE_LIB_VERIFIER})

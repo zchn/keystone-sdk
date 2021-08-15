@@ -3,10 +3,7 @@
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
 #include "app/eapp_utils.h"
-#include "app/string.h"
 #include "app/syscall.h"
-#include "app/malloc.h"
-#include "edge/edge_call.h"
 #include "edge_wrapper.h"
 
 int main(){
@@ -30,5 +27,5 @@ int main(){
 
   ocall_copy_report(buffer, 2048);
 
-  return 0;
+  EAPP_RETURN(0);
 }

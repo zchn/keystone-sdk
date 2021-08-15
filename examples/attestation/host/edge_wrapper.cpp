@@ -26,6 +26,7 @@ edge_init(Keystone::Enclave* enclave) {
 
   edge_call_init_internals(
       (uintptr_t)enclave->getSharedBuffer(), enclave->getSharedBufferSize());
+  return 0;
 }
 
 unsigned long
