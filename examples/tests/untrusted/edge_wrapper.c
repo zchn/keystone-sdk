@@ -5,18 +5,16 @@
 #include "app/eapp_utils.h"
 #include "app/string.h"
 #include "app/syscall.h"
-#include "edge/edge_call.h"
 #include "edge_wrapper.h"
+
+void edge_init(){
+  /* Nothing for now, will probably register buffers/callsites
+     later */
+}
 
 #define OCALL_PRINT_BUFFER 1
 #define OCALL_PRINT_VALUE 2
-#define OCALL_COPY_REPORT 3
 #define OCALL_GET_STRING 4
-
-void edge_init(){
-    /* Nothing for now, will probably register buffers/callsites
-       later */
-}
 
 void ocall_print_value(unsigned long val){
 

@@ -3,27 +3,18 @@
 // All Rights Reserved. See LICENSE for license details.
 //------------------------------------------------------------------------------
 #include "app/eapp_utils.h"
+#include "app/string.h"
 #include "app/syscall.h"
+
 #include "edge_wrapper.h"
 
 void EAPP_ENTRY eapp_entry(){
   edge_init();
 
-  struct edge_data retdata;
-  ocall_get_string(&retdata);
-
-  for(int i = 1; i <= 10000; i++) {
-      if (i % 5000 == 0) {
-          ocall_print_value(i);
-      }
-  }
-
-  char nonce[2048];
-  if (retdata.size > 2048) retdata.size = 2048;
-  copy_from_shared(nonce, retdata.offset, retdata.size);
-
+  char* data = "nonce";
   char buffer[2048];
-  attest_enclave((void*) buffer, nonce, retdata.size);
+
+  attest_enclave((void*) buffer, data, 5);
 
   ocall_copy_report(buffer, 2048);
 
