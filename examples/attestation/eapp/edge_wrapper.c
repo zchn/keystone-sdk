@@ -5,7 +5,7 @@
 #include "app/eapp_utils.h"
 #include "app/string.h"
 #include "app/syscall.h"
-#include "edge/edge_call.h"
+#include "edge/edge_common.h"
 #include "edge_wrapper.h"
 
 #define OCALL_PRINT_BUFFER 1

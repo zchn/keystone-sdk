@@ -4,6 +4,7 @@
 //------------------------------------------------------------------------------
 #include "app/eapp_utils.h"
 #include "app/syscall.h"
+#include "edge/edge_common.h"
 #include "edge_wrapper.h"
 
 int main(){

@@ -7,6 +7,7 @@
 
 #include "edge/edge_call.h"
 #include "host/keystone.h"
+#include "verifier/report.h"
 
 typedef struct packaged_str{
   unsigned long str_offset;
@@ -18,13 +19,12 @@ typedef unsigned char byte;
 int edge_init(Keystone::Enclave* enclave);
 
 void print_buffer_wrapper(void* buffer);
-unsigned long print_buffer(char* str);
 
 void print_value_wrapper(void* buffer);
 void print_value(unsigned long val);
 
 void copy_report_wrapper(void* buffer);
-void copy_report(void* shared_buffer);
+void copy_report(Report report);
 
 void get_host_string_wrapper(void* buffer);
 std::string get_host_string();

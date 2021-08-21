@@ -42,11 +42,11 @@ get_host_string() {
 // For copying and getting the attestation report from the enclave.
 std::unique_ptr<Report> g_report = nullptr;
 void
-copy_report(void* buffer) {
+copy_report(Report report) {
   if (g_report != nullptr)
     throw std::runtime_error("g_report set more than once");
   g_report = std::make_unique<Report>();
-  g_report->fromBytes((byte*)buffer);
+  *g_report = std::move(report);
 }
 Report
 get_report() {

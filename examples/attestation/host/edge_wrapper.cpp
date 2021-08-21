@@ -5,6 +5,7 @@
 #include "edge_wrapper.h"
 
 #include <string>
+#include <optional>
 
 #include "edge/edge_call.h"
 #include "verifier/report.h"
@@ -15,6 +16,82 @@
 #define OCALL_PRINT_VALUE 2
 #define OCALL_COPY_REPORT 3
 #define OCALL_GET_STRING 4
+
+class SharedBuffer {
+ public:
+  SharedBuffer(void* buffer)
+      /* For now we assume the call struct is at the front of the shared
+       * buffer. This will have to change to allow nested calls. */
+      : edge_call_((struct edge_call*)buffer) {}
+
+  void set_ok() { edge_call_->return_data.call_status = CALL_STATUS_OK; }
+  void set_bad_offset() {
+    edge_call_->return_data.call_status = CALL_STATUS_BAD_OFFSET;
+  }
+  void set_bad_ptr() {
+    edge_call_->return_data.call_status = CALL_STATUS_BAD_PTR;
+  }
+
+  std::optional<std::pair<uintptr_t, size_t>>
+  get_call_args_ptr_or_set_bad_offset() {
+    uintptr_t call_args;
+    size_t arg_len;
+    if (edge_call_args_ptr(edge_call_, &call_args, &arg_len) != 0) {
+      set_bad_offset();
+      return std::nullopt;
+    }
+    return std::pair{call_args, arg_len};
+  }
+
+  std::optional<char*> get_c_string_or_set_bad_offset() {
+    auto v = get_call_args_ptr_or_set_bad_offset();
+    return v.has_value() ? std::optional{(char*)v.value().first} : std::nullopt;
+  }
+
+  std::optional<unsigned long> get_unsigned_long_or_set_bad_offset() {
+    auto v = get_call_args_ptr_or_set_bad_offset();
+    return v.has_value() ? std::optional{*(unsigned long*)v.value().first}
+                         : std::nullopt;
+  }
+
+  std::optional<Report> get_report_or_set_bad_offset() {
+    auto v = get_call_args_ptr_or_set_bad_offset();
+    if (!v.has_value()) return std::nullopt;
+    Report ret;
+    ret.fromBytes((byte*)v.value().first);
+    return ret;
+  }
+
+  void setup_ret_or_bad_ptr(unsigned long ret_val) {
+    // Assuming we are done with the data section for args, use as
+    // return region.
+    //
+    // TODO safety check?
+    uintptr_t data_section = edge_call_data_ptr();
+
+    memcpy((void*)data_section, &ret_val, sizeof(unsigned long));
+
+    if (edge_call_setup_ret(
+            edge_call_, (void*)data_section, sizeof(unsigned long))) {
+      set_bad_ptr();
+    } else {
+      set_ok();
+    }
+  }
+
+  void setup_wrapped_ret_or_bad_ptr(const std::string& ret_val) {
+    if (edge_call_setup_wrapped_ret(
+            edge_call_, (void*)ret_val.c_str(), ret_val.length() + 1)) {
+      set_bad_ptr();
+    } else {
+      set_ok();
+    }
+    return;
+  }
+
+ private:
+  struct edge_call* const edge_call_;
+};
 
 int
 edge_init(Keystone::Enclave* enclave) {
@@ -29,116 +106,45 @@ edge_init(Keystone::Enclave* enclave) {
   return 0;
 }
 
-unsigned long
-print_buffer(char* str) {
-    printf("Enclave said: %s", str);
-    return strlen(str);
-}
-
 void
 print_buffer_wrapper(void* buffer) {
-  /* For now we assume the call struct is at the front of the shared
-   * buffer. This will have to change to allow nested calls. */
-  struct edge_call* edge_call = (struct edge_call*)buffer;
+  SharedBuffer shared_buffer(buffer);
 
-  uintptr_t call_args;
-  unsigned long ret_val;
-  size_t arg_len;
-  if (edge_call_args_ptr(edge_call, &call_args, &arg_len) != 0) {
-    edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
-    return;
+  auto t = shared_buffer.get_c_string_or_set_bad_offset();
+  if (t.has_value()) {
+    printf("Enclave said: %s", t.value());
+    auto ret_val = strlen(t.value());
+    shared_buffer.setup_ret_or_bad_ptr(ret_val);
   }
-
-  ret_val = print_buffer((char*)call_args);
-
-  // We are done with the data section for args, use as return region
-  // TODO safety check?
-  uintptr_t data_section = edge_call_data_ptr();
-
-  memcpy((void*)data_section, &ret_val, sizeof(unsigned long));
-
-  if (edge_call_setup_ret(
-          edge_call, (void*)data_section, sizeof(unsigned long))) {
-    edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
-  } else {
-    edge_call->return_data.call_status = CALL_STATUS_OK;
-  }
-
-  return;
-}
-
-void
-print_value(unsigned long val) {
-    printf("Enclave said value: %u\n", val);
-    return;
 }
 
 void
 print_value_wrapper(void* buffer) {
-  /* For now we assume the call struct is at the front of the shared
-   * buffer. This will have to change to allow nested calls. */
-  struct edge_call* edge_call = (struct edge_call*)buffer;
+  SharedBuffer shared_buffer(buffer);
 
-  uintptr_t call_args;
-  unsigned long ret_val;
-  size_t args_len;
-  if (edge_call_args_ptr(edge_call, &call_args, &args_len) != 0) {
-    edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
-    return;
+  auto t = shared_buffer.get_unsigned_long_or_set_bad_offset();
+  if (t.has_value()) {
+    printf("Enclave said value: %u\n", t.value());
+    shared_buffer.set_ok();
   }
-
-  print_value(*(unsigned long*)call_args);
-
-  edge_call->return_data.call_status = CALL_STATUS_OK;
   return;
 }
 
 void
 copy_report_wrapper(void* buffer) {
-  /* For now we assume the call struct is at the front of the shared
-   * buffer. This will have to change to allow nested calls. */
-  struct edge_call* edge_call = (struct edge_call*)buffer;
+  SharedBuffer shared_buffer(buffer);
 
-  uintptr_t data_section;
-  unsigned long ret_val;
-  // TODO check the other side of this
-  if (edge_call_get_ptr_from_offset(
-          edge_call->call_arg_offset, sizeof(report_t), &data_section) != 0) {
-    edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
-    return;
+  auto t = shared_buffer.get_report_or_set_bad_offset();
+  if (t.has_value()) {
+    copy_report(std::move(t.value()));
+    shared_buffer.set_ok();
   }
-
-  copy_report((void*)data_section);
-
-  edge_call->return_data.call_status = CALL_STATUS_OK;
-
   return;
 }
 
-
 void
 get_host_string_wrapper(void* buffer) {
-  /* For now we assume the call struct is at the front of the shared
-   * buffer. This will have to change to allow nested calls. */
-  struct edge_call* edge_call = (struct edge_call*)buffer;
-
-  uintptr_t call_args;
-  unsigned long ret_val;
-  size_t args_len;
-  if (edge_call_args_ptr(edge_call, &call_args, &args_len) != 0) {
-    edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
-    return;
-  }
-
-  const std::string host_str = get_host_string();
-
-  // This handles wrapping the data into an edge_data_t and storing it
-  // in the shared region.
-  if (edge_call_setup_wrapped_ret(edge_call, (void*)host_str.c_str(), host_str.length()+1)) {
-    edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
-  } else {
-    edge_call->return_data.call_status = CALL_STATUS_OK;
-  }
-
+  SharedBuffer shared_buffer(buffer);
+  shared_buffer.setup_wrapped_ret_or_bad_ptr(get_host_string());
   return;
 }

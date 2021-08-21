@@ -4,7 +4,6 @@
 //------------------------------------------------------------------------------
 #ifndef _EDGE_WRAPPER_H_
 #define _EDGE_WRAPPER_H_
-#include "edge/edge_call.h"
 
 void edge_init();
 
