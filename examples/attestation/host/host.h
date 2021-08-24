@@ -68,11 +68,11 @@ private:
    const std::string& nonce;
    std::unique_ptr<Report> report;
  };
- void dispatch_ocall(RunData& run_data);
- void print_buffer_wrapper(RunData& run_data);
- void print_value_wrapper(RunData& run_data);
- void copy_report_wrapper(RunData& run_data);
- void get_host_string_wrapper(RunData& run_data);
+ static void dispatch_ocall(RunData& run_data);
+ static void print_buffer_wrapper(RunData& run_data);
+ static void print_value_wrapper(RunData& run_data);
+ static void copy_report_wrapper(RunData& run_data);
+ static void get_host_string_wrapper(RunData& run_data);
  const Keystone::Params params_;
  const std::string eapp_file_;
  const std::string rt_file_;
