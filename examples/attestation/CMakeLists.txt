@@ -1,5 +1,5 @@
 set(eapp_bin attestor)
-set(eapp_src eapp/attestor.c eapp/edge_wrapper.c)
+set(eapp_src eapp/attestor.c)
 set(host_bin attestor-runner)
 set(host_src host/attestor-runner.cpp host/host.cpp host/verifier.cpp)
 set(package_name "attestor.ke")

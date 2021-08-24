@@ -23,39 +23,6 @@
 #define OCALL_COPY_REPORT 3
 #define OCALL_GET_STRING 4
 
-/****************************************************************
- * Helper functions to work with the handlers in edge_wrapper.h.
- ****************************************************************/
-// For setting and getting the message for the enclave to fetch.
-std::unique_ptr<std::string> g_host_string = nullptr;
-void
-set_host_string(const std::string& value) {
-  if (g_host_string != nullptr)
-    throw std::runtime_error("g_host_string set more than once");
-  g_host_string = std::make_unique<std::string>(value);
-}
-std::string
-get_host_string() {
-  if (g_host_string == nullptr)
-    throw std::runtime_error("g_host_string used before set");
-  return *g_host_string;
-}
-
-// For copying and getting the attestation report from the enclave.
-std::unique_ptr<Report> g_report = nullptr;
-void
-copy_report(Report report) {
-  if (g_report != nullptr)
-    throw std::runtime_error("g_report set more than once");
-  g_report  = std::make_unique<Report>();
-  *g_report = std::move(report);
-}
-Report
-get_report() {
-  if (g_report == nullptr) throw std::runtime_error("g_report used before set");
-  return *g_report;
-}
-
 void
 SharedBuffer::set_ok() {
   edge_call_->return_data.call_status = CALL_STATUS_OK;
@@ -231,7 +198,7 @@ Host::copy_report_wrapper(RunData& run_data) {
 
   auto t = shared_buffer.get_report_or_set_bad_offset();
   if (t.has_value()) {
-    copy_report(std::move(t.value()));
+    run_data.report = std::make_unique<Report>(std::move(t.value()));
     shared_buffer.set_ok();
   }
   return;
@@ -241,7 +208,7 @@ void
 Host::get_host_string_wrapper(RunData& run_data) {
   SharedBuffer& shared_buffer = run_data.shared_buffer;
 
-  shared_buffer.setup_wrapped_ret_or_bad_ptr(get_host_string());
+  shared_buffer.setup_wrapped_ret_or_bad_ptr(run_data.nonce);
   return;
 }
 
@@ -272,23 +239,15 @@ Host::run(const std::string& nonce) {
 
   RunData run_data{
       SharedBuffer{enclave.getSharedBuffer(), enclave.getSharedBufferSize()},
-      nonce};
+      nonce, nullptr};
 
   enclave.registerOcallDispatch([this, &run_data](void* buffer) {
     assert(buffer == (void*)run_data.shared_buffer.ptr());
     dispatch_ocall(run_data);
   });
 
-  // Leaves the nonce in a global variable so the enclave can get it
-  // when making OCALL_GET_STRING ocall. See get_host_string_wrapper()
-  // in edge_wrapper.cpp for how this is implemented under the hood.
-  set_host_string(nonce);
-
   uintptr_t encl_ret;
   enclave.run(&encl_ret);
 
-  // There should already be a report sent from the enclave after the
-  // enclave finishes running. See copy_report_wrapper for how this is
-  // implemented under the hood.
-  return get_report();
+  return *run_data.report;
 }

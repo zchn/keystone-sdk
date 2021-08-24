@@ -63,18 +63,19 @@ Host(
     Report run(const std::string& nonce);
 
 private:
-    struct RunData {
-        SharedBuffer shared_buffer;
-        const std::string& nonce;
-    };
-    void dispatch_ocall(RunData& run_data);
-    void print_buffer_wrapper(RunData& run_data);
-    void print_value_wrapper(RunData& run_data);
-    void copy_report_wrapper(RunData& run_data);
-    void get_host_string_wrapper(RunData& run_data);
-    const Keystone::Params params_;
-    const std::string eapp_file_;
-    const std::string rt_file_;
+ struct RunData {
+   SharedBuffer shared_buffer;
+   const std::string& nonce;
+   std::unique_ptr<Report> report;
+ };
+ void dispatch_ocall(RunData& run_data);
+ void print_buffer_wrapper(RunData& run_data);
+ void print_value_wrapper(RunData& run_data);
+ void copy_report_wrapper(RunData& run_data);
+ void get_host_string_wrapper(RunData& run_data);
+ const Keystone::Params params_;
+ const std::string eapp_file_;
+ const std::string rt_file_;
 };
 
 #endif /* _ATTESTATION_HOST_H_ */
