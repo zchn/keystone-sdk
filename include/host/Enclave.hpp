@@ -13,6 +13,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <functional>
 #include <iostream>
 
 #include "./common.h"
@@ -27,8 +28,8 @@ extern "C" {
 
 namespace Keystone {
 
-typedef void (*OcallFunc)(void*);
-
+// typedef void (*OcallFunc)(void*);
+typedef std::function<void(void*)> OcallFunc;
 
 class Enclave {
  private:
